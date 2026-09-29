@@ -4,17 +4,17 @@ A native macOS menu-bar app plus an Obsidian companion plugin. Your **Tasks quer
 
 No cloud service, network listener, API key or Obsidian vault scanning by the Mac app. The two processes exchange local JSON files inside the companion plugin folder.
 
-**Status:** working build with automated reconciliation and plugin contract tests; **not yet validated end-to-end in a running Obsidian vault with EventKit permissions**. Start with a test vault and back up your notes. The Tasks query adapter uses private internals and needs a manual compatibility check when upgrading Tasks.
+**Status:** locally validated end-to-end with **macOS 27.0, Obsidian 1.13.7, Tasks 8.4.0 and real Apple Reminders/EventKit**, using an isolated vault/profile and the production sync controller in a disposable test app. Automated unit and integration tests pass. Menu-bar interactions and launch-at-login still need manual verification. Start with a test vault and back up your notes. The Tasks query adapter uses private internals.
 
 ## Requirements
 
 - macOS 14 Sonoma or newer.
 - Xcode Command Line Tools (`xcode-select --install`), with Swift 5.9 or newer.
-- Node.js 20 or newer and npm.
+- Node.js 22 or newer and npm (the integration harness uses its built-in WebSocket).
 - Desktop Obsidian 1.8.7 or newer, with the **Tasks** community plugin enabled.
 - A writable Apple Reminders account/list.
 
-The query adapter was checked against **Tasks 8.4.0 source**, revision [`a722a85`](https://github.com/obsidian-tasks-group/obsidian-tasks/tree/a722a85f54e219ffaad33ec360688cd494daa80d). This is a source compatibility check, not an in-app verification or a promise of compatibility with every Tasks version. If the integration is unavailable or a query fails, syncing pauses instead of treating the results as empty.
+The query adapter was checked against **Tasks 8.4.0 source**, revision [`a722a85`](https://github.com/obsidian-tasks-group/obsidian-tasks/tree/a722a85f54e219ffaad33ec360688cd494daa80d), and tested against the official **8.4.0 release inside Obsidian**. This is not a promise of compatibility with every Tasks version. If the integration is unavailable or a query fails, syncing pauses instead of treating the results as empty.
 
 ## Install
 
@@ -36,10 +36,10 @@ npm ci
 Matching tasks receive an invisible identity comment, for example:
 
 ```markdown
-- [ ] Call Alex 📅 2026-10-01 <!-- reminders:11111111-1111-4111-a111-111111111111 -->
+- [ ] <!-- reminders:11111111-1111-4111-a111-111111111111 --> Call Alex 📅 2026-10-01
 ```
 
-Leave these comments in place. They preserve identity across edits, note renames and moving tasks between notes. Block references remain at the end of the line. When copying a task to create a different task, remove the copied comment; duplicate identities pause syncing.
+Leave these comments in place. They preserve identity across edits, note renames and moving tasks between notes. Comments go immediately after the checkbox: placing them after a due date breaks Tasks' trailing-metadata parser. Older trailing markers are automatically migrated. Block references remain at the end of the line. When copying a task to create a different task, remove the copied comment; duplicate identities pause syncing.
 
 ### 2. Install the Mac app
 
@@ -90,6 +90,8 @@ sort by priority
 The companion delegates this to **Tasks' real query engine**, including Tasks' global query/filter, note properties, JavaScript expressions, date parsing, boolean filters and sorting. Ensure the appropriate notes have `type: project`, `type: area` or `type: person` in their YAML properties. If your Tasks settings require a global task tag such as `#task`, your tasks must still carry it.
 
 Reminders does not expose the same custom ordering: choose its built-in due-date or priority sorting. Grouping/limits are evaluated by Tasks; a task appearing in multiple groups is synced only once. Function queries execute JavaScript in Obsidian, so only use expressions you trust.
+
+The identity comment is part of the description seen by Tasks, although it is stripped from reminder titles. Prefix-sensitive description filters and description-based function queries may need to strip that comment themselves. Your property/date/path query is unaffected.
 
 ## Sync rules
 
@@ -149,7 +151,21 @@ swift test --package-path mac-app
 ./scripts/build-app.sh
 ```
 
-Tests cover completion reconciliation, reopening, query departure, pending commands, freshness/duplicate validation, stable markers, recurrence identities and the Tasks integration contract. They do not replace the manual Obsidian/EventKit checks above.
+Unit tests cover completion reconciliation, reopening, query departure, pending commands, freshness/duplicate validation, stable markers, recurrence identities, atomic mailbox replacement and the Tasks integration contract.
+
+### Real Obsidian + EventKit integration tests
+
+```bash
+./scripts/test-integration.sh
+```
+
+This downloads the pinned official Tasks 8.4.0 release (verifying its JavaScript SHA-256), opens installed Obsidian with a **separate profile and vault under `dist/`**, enables function queries only in that profile, and runs real query/completion/recurrence/error checks. It then compiles a separate test `.app` using the production `SyncController`, exercises actual EventKit creation, completion/reopening in both directions, title/date edits, query departure and unrelated-reminder safety, and deletes its disposable Reminders list.
+
+Approve the test app's macOS Reminders prompt if asked. Its permission is separate from the production app's permission. Both normal success and handled test failures attempt cleanup; forcibly interrupting the test can leave its disposable list/state behind. Existing test-vault app state causes the native test to refuse to run rather than overwrite it.
+
+The isolated Obsidian process is closed on exit; your existing Obsidian session and real vault are not touched. Test artifacts remain ignored under `dist/`, including `reminders-integration-report.txt` and `integration-obsidian.log`. The test debugger is loopback-only and lasts only for the isolated test session. A busy port causes a safe refusal; override with `OBSIDIAN_TEST_PORT=9238`. Set `OBSIDIAN_EXECUTABLE` if Obsidian is installed elsewhere.
+
+The integration harness does not automate menu-bar clicks, production-app permission approval or launch-at-login. Verify those manually using the installation steps above.
 
 ```text
 obsidian-plugin/src/tasks-adapter.ts    Private Tasks integration, isolated behind select/toggle

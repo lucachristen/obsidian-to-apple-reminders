@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0"><dict>
+<key>CFBundleIdentifier</key><string>ch.lucachristen.obsidian-reminders-bridge.integration</string>
+<key>CFBundleName</key><string>Reminders Bridge Integration Test</string>
+<key>CFBundleExecutable</key><string>RemindersIntegration</string>
+<key>CFBundlePackageType</key><string>APPL</string>
+<key>CFBundleVersion</key><string>1</string>
+<key>LSMinimumSystemVersion</key><string>14.0</string>
+<key>LSUIElement</key><true/>
+<key>NSRemindersFullAccessUsageDescription</key><string>Test the Obsidian bridge in a disposable Reminders list. Only test-created reminders will be modified, and the test list will be removed afterward.</string>
+</dict></plist>
