@@ -32,7 +32,7 @@ export class TasksAdapter {
   plugin(): TasksPlugin {
     const plugin = (this.app as App & { plugins: { getPlugin(id: string): unknown } }).plugins.getPlugin('obsidian-tasks-plugin') as TasksPlugin | undefined;
     if (!plugin?.getTasks || !plugin?.queryRenderer?.addQueryRenderChild || !plugin?.apiV1) {
-      throw new Error('Enable a compatible Obsidian Tasks plugin (tested against current Tasks source).');
+      throw new Error('Enable a compatible Obsidian Tasks plugin (adapter checked against Tasks 8.4.0 source; see README).');
     }
     if (plugin.getState() !== 'Warm') throw new Error('Waiting for the Tasks cache to finish loading.');
     return plugin;

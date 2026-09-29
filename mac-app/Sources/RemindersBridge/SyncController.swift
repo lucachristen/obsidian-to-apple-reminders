@@ -139,16 +139,25 @@ final class SyncController: ObservableObject {
         return UUID(uuidString: id) == nil ? nil : id
     }
     private func apply(_ task: BridgeTask, to reminder: EKReminder, snapshot: Snapshot) throws {
-        reminder.title = task.title
-        reminder.isCompleted = task.completed
-        if !task.completed { reminder.completionDate = nil }
-        reminder.dueDateComponents = try dateComponents(task.due)
+        let due = try dateComponents(task.due)
+        let oldDue = reminder.dueDateComponents
+        let sameDue = (due == nil && oldDue == nil) || (due != nil && oldDue != nil
+            && due?.year == oldDue?.year && due?.month == oldDue?.month && due?.day == oldDue?.day
+            && oldDue?.hour == nil && oldDue?.minute == nil)
         // Tasks priorities: highest=0, high=1, medium=2, normal=3, low=4, lowest=5.
-        reminder.priority = task.priority <= 1 ? 1 : task.priority == 2 ? 5 : task.priority >= 4 ? 9 : 0
-        reminder.notes = [marker(task.id), "Obsidian: \(task.path)", task.scheduled.map { "Scheduled: \($0)" }]
+        let priority = task.priority <= 1 ? 1 : task.priority == 2 ? 5 : task.priority >= 4 ? 9 : 0
+        let notes = [marker(task.id), "Obsidian: \(task.path)", task.scheduled.map { "Scheduled: \($0)" }]
             .compactMap { $0 }.joined(separator: "\n")
         var url = URLComponents(); url.scheme = "obsidian"; url.host = "open"
         url.queryItems = [URLQueryItem(name: "vault", value: snapshot.vault), URLQueryItem(name: "file", value: task.path)]
+        guard reminder.title != task.title || reminder.isCompleted != task.completed || !sameDue
+                || reminder.priority != priority || reminder.notes != notes || reminder.url != url.url else { return }
+        reminder.title = task.title
+        reminder.isCompleted = task.completed
+        if !task.completed { reminder.completionDate = nil }
+        reminder.dueDateComponents = due
+        reminder.priority = priority
+        reminder.notes = notes
         reminder.url = url.url
         try store.save(reminder, commit: true)
     }

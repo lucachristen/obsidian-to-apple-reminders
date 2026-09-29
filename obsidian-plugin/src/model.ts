@@ -12,7 +12,7 @@ export function taskId(line: string): string | undefined {
   return [...line.matchAll(MARKER)][0]?.[1];
 }
 export function withoutMarker(line: string): string {
-  return line.replace(MARKER, '').trimEnd();
+  return line.replace(/[ \t]*<!-- reminders:[a-f0-9-]{36} -->/g, '').trimEnd();
 }
 export function withId(line: string, id: string): string {
   // Block references must stay at the end of the line.
