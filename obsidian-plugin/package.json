@@ -1,0 +1,17 @@
+{
+  "name": "obsidian-reminders-companion",
+  "version": "0.1.0",
+  "private": true,
+  "scripts": {
+    "build": "esbuild src/main.ts --bundle --external:obsidian --platform=browser --format=cjs --target=es2022 --outfile=main.js",
+    "typecheck": "tsc --noEmit",
+    "test": "tsx --test test/*.test.ts"
+  },
+  "devDependencies": {
+    "@types/node": "^24.0.0",
+    "esbuild": "^0.25.0",
+    "obsidian": "^1.8.7",
+    "tsx": "^4.20.0",
+    "typescript": "^5.9.0"
+  }
+}

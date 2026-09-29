@@ -1,0 +1,10 @@
+{
+  "name": "obsidian-reminders-bridge",
+  "private": true,
+  "scripts": {
+    "build:plugin": "npm --prefix obsidian-plugin run build",
+    "test:plugin": "npm --prefix obsidian-plugin test",
+    "typecheck": "npm --prefix obsidian-plugin run typecheck"
+  },
+  "workspaces": ["obsidian-plugin"]
+}

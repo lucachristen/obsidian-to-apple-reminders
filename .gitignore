@@ -1,0 +1,7 @@
+.DS_Store
+node_modules/
+.build/
+dist/
+*.app/
+obsidian-plugin/main.js
+obsidian-plugin/data.json

@@ -1,0 +1,9 @@
+{
+  "id": "obsidian-reminders-companion",
+  "name": "Apple Reminders Bridge",
+  "version": "0.1.0",
+  "minAppVersion": "1.8.0",
+  "description": "Sync a Tasks query to the local macOS Reminders Bridge app.",
+  "author": "Luca Christen",
+  "isDesktopOnly": true
+}
