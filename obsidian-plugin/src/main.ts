@@ -29,7 +29,8 @@ export default class RemindersCompanion extends Plugin {
   private async writeJSON(path: string, value: unknown) {
     const adapter = this.app.vault.adapter;
     const temporary = `${path}.tmp`;
-    await adapter.write(temporary, JSON.stringify(value, null, 2));
+    const payload = path.includes('/acks/') ? { ...(value as object), processedAt: new Date().toISOString() } : value;
+    await adapter.write(temporary, JSON.stringify(payload, null, 2));
     // Desktop filesystem adapter rename replaces the destination atomically.
     await adapter.rename(temporary, path);
   }

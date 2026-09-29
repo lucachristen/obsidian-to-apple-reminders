@@ -43,7 +43,12 @@ export class TasksAdapter {
     const element = document.createElement('div');
     const context = {
       sourcePath,
-      addChild: (value: MarkdownRenderChild) => { child = value; },
+      addChild: (value: MarkdownRenderChild) => {
+        child = value;
+        // We only need the constructor-created query, not a live renderer, observers,
+        // cache subscriptions, or a second evaluation of JavaScript filters.
+        value.load = () => {};
+      },
       getSectionInfo: () => null,
       frontmatter: null,
     } as unknown as MarkdownPostProcessorContext;
