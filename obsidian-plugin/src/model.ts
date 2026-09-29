@@ -15,10 +15,12 @@ export function withoutMarker(line: string): string {
   return line.replace(/[ \t]*<!-- reminders:[a-f0-9-]{36} -->/g, '').trimEnd();
 }
 export function withId(line: string, id: string): string {
-  // Block references must stay at the end of the line.
+  // Tasks parses dates/recurrence from the end of the body. A trailing HTML
+  // comment stops that parser, so put identity directly after the checkbox.
   const clean = withoutMarker(line);
-  const block = clean.match(/\s+\^[\w-]+$/)?.[0] ?? '';
-  return `${clean.slice(0, clean.length - block.length)} <!-- reminders:${id} -->${block}`;
+  const prefix = clean.match(/^(\s*(?:[-*+]|\d+[.)])\s+\[[^\]]\]\s+)/)?.[0];
+  if (!prefix) throw new Error('Cannot attach an identity to a non-task line.');
+  return `${prefix}<!-- reminders:${id} --> ${clean.slice(prefix.length)}`;
 }
 export function completion(line: string): boolean {
   const symbol = line.match(/^\s*(?:[-*+]|\d+[.)])\s+\[([^\]])\]/)?.[1];

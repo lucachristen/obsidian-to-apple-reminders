@@ -7,9 +7,13 @@ test('stable IDs preserve indentation, dates and terminal block references', () 
   const line = '  - [ ] Test 📅 2026-10-01 ^my-task';
   const tagged = withId(line, id);
   assert.equal(taskId(tagged), id);
-  assert.equal(tagged.endsWith('^my-task'), true);
+  assert.equal(tagged.endsWith('📅 2026-10-01 ^my-task'), true);
   assert.equal(withoutMarker(tagged), line);
   assert.equal(withId(tagged, id), tagged);
+});
+test('old trailing identity markers migrate without changing task metadata', () => {
+  const old = `- [ ] Repeat 🔁 every day 📅 2026-10-01 <!-- reminders:${id} -->`;
+  assert.equal(withId(old, id), `- [ ] <!-- reminders:${id} --> Repeat 🔁 every day 📅 2026-10-01`);
 });
 test('completion accepts standard and uppercase completed checkboxes', () => {
   assert.equal(completion('- [ ] Pending'), false);

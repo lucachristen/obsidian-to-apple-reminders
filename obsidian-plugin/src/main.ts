@@ -1,4 +1,6 @@
-import { Notice, Plugin, PluginSettingTab, Setting, TFile, normalizePath } from 'obsidian';
+import { FileSystemAdapter, Notice, Plugin, PluginSettingTab, Setting, TFile, normalizePath } from 'obsidian';
+import { join } from 'node:path';
+import { writeAtomicJSON } from './mailbox';
 import { DEFAULT_QUERY, completion, taskId, toggledLines, withId, withoutMarker, type Command, type SnapshotTask } from './model';
 import { TasksAdapter, type TasksTask } from './tasks-adapter';
 
@@ -28,11 +30,9 @@ export default class RemindersCompanion extends Plugin {
   }
   private async writeJSON(path: string, value: unknown) {
     const adapter = this.app.vault.adapter;
-    const temporary = `${path}.tmp`;
+    if (!(adapter instanceof FileSystemAdapter)) throw new Error('The Reminders bridge requires a local desktop vault.');
     const payload = path.includes('/acks/') ? { ...(value as object), processedAt: new Date().toISOString() } : value;
-    await adapter.write(temporary, JSON.stringify(payload, null, 2));
-    // Desktop filesystem adapter rename replaces the destination atomically.
-    await adapter.rename(temporary, path);
+    await writeAtomicJSON(join(adapter.getBasePath(), path), payload);
   }
   private async updateLine(task: TasksTask, transform: (line: string) => string) {
     const file = this.app.vault.getAbstractFileByPath(task.taskLocation.path);
@@ -93,6 +93,14 @@ export default class RemindersCompanion extends Plugin {
         if (!id) continue;
         if (ids.has(id)) throw new Error(`Duplicate reminders ID in ${task.taskLocation.path}. Remove the copied marker before syncing.`);
         ids.add(id);
+      }
+      // Repair IDs placed after trailing Tasks metadata by older builds.
+      for (const task of all) {
+        const id = taskId(task.originalMarkdown);
+        if (id && withId(task.originalMarkdown, id) !== task.originalMarkdown) {
+          await this.updateLine(task, line => withId(line, id));
+          return;
+        }
       }
       if (await this.commands(all)) return;
       // ID insertion never adds lines. Verify each original line inside vault.process.

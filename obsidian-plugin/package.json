@@ -3,7 +3,7 @@
   "version": "0.1.0",
   "private": true,
   "scripts": {
-    "build": "esbuild src/main.ts --bundle --external:obsidian --platform=browser --format=cjs --target=es2022 --outfile=main.js",
+    "build": "esbuild src/main.ts --bundle --external:obsidian --external:node:* --platform=browser --format=cjs --target=es2022 --outfile=main.js",
     "typecheck": "tsc --noEmit",
     "test": "tsx --test test/*.test.ts"
   },
