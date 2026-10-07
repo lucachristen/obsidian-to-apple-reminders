@@ -1,26 +1,16 @@
 export const DEFAULT_QUERY = `not done
-filter by function ['project', 'area', 'person'].includes(task.file.property('type'))
-(due before in 15 days) OR (scheduled before in 15 days)
-path does not include _ meta/templates
-path does not include 9 Archive
+(due before in 14 days) OR (scheduled before in 14 days)
 sort by due
-sort by scheduled
 sort by priority`;
 
 export const MARKER = /<!-- reminders:([a-f0-9-]{36}) -->/g;
 export function taskId(line: string): string | undefined {
-  return [...line.matchAll(MARKER)][0]?.[1];
+  const matches = [...line.matchAll(MARKER)];
+  if (matches.length > 1) throw new Error('Task has multiple legacy reminders IDs. Resolve its comments before migration.');
+  return matches[0]?.[1];
 }
 export function withoutMarker(line: string): string {
   return line.replace(/[ \t]*<!-- reminders:[a-f0-9-]{36} -->/g, '').trimEnd();
-}
-export function withId(line: string, id: string): string {
-  // Tasks parses dates/recurrence from the end of the body. A trailing HTML
-  // comment stops that parser, so put identity directly after the checkbox.
-  const clean = withoutMarker(line);
-  const prefix = clean.match(/^(\s*(?:[-*+]|\d+[.)])\s+\[[^\]]\]\s+)/)?.[0];
-  if (!prefix) throw new Error('Cannot attach an identity to a non-task line.');
-  return `${prefix}<!-- reminders:${id} --> ${clean.slice(prefix.length)}`;
 }
 export function completion(line: string): boolean {
   const symbol = line.match(/^\s*(?:[-*+]|\d+[.)])\s+\[([^\]])\]/)?.[1];
@@ -29,12 +19,12 @@ export function completion(line: string): boolean {
   }
   return symbol !== ' ';
 }
-export function toggledLines(result: string, id: string, desired: boolean): string {
-  const lines = result.split('\n').map(withoutMarker);
+export function toggledTask(result: string, desired: boolean, deletesCompleted = false): { markdown: string; index: number } {
+  if (deletesCompleted && !desired) throw new Error('Cannot reopen a delete-on-completion task.');
+  const lines = result === '' ? [] : result.split(/\r?\n/).map(withoutMarker);
   const index = lines.findIndex(line => completion(line) === desired);
-  if (index < 0) throw new Error('Tasks toggle did not produce the requested completion status. Check custom status cycling.');
-  lines[index] = withId(lines[index], id);
-  return lines.join('\n');
+  if (index < 0 && !deletesCompleted) throw new Error('Tasks toggle did not produce the requested completion status. Check custom status cycling.');
+  return { markdown: lines.join('\n'), index };
 }
 
 export interface SnapshotTask {

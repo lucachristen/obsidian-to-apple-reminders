@@ -1,6 +1,6 @@
 {
   "name": "obsidian-reminders-companion",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "private": true,
   "scripts": {
     "build": "esbuild src/main.ts --bundle --external:obsidian --external:node:* --platform=browser --format=cjs --target=es2022 --outfile=main.js",

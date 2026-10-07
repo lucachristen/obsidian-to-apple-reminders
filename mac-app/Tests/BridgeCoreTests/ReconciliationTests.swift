@@ -40,6 +40,42 @@ final class ReconciliationTests: XCTestCase {
         XCTAssertEqual(decide(task: task(), mapping: linked, reminderCompleted: true), .wait)
         XCTAssertEqual(decide(task: nil, mapping: linked, reminderCompleted: nil), .wait)
     }
+    func testUncertainIdentityFreezesDeletionCreationAndCompletion() {
+        XCTAssertEqual(decide(task: nil, mapping: mapping(), reminderCompleted: true, identityPaused: true), .wait)
+        XCTAssertEqual(decide(task: task(), mapping: nil, reminderCompleted: nil, identityPaused: true), .wait)
+        XCTAssertEqual(decide(task: task(), mapping: mapping(), reminderCompleted: true, identityPaused: true), .wait)
+    }
+    func testV2PausedIdentityValidationAndDecoding() throws {
+        let formatter = ISO8601DateFormatter(); formatter.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
+        let timestamp = formatter.string(from: Date())
+        func decode(_ fields: String) throws -> Snapshot {
+            let json = "{\"version\":2,\"generatedAt\":\"\(timestamp)\",\"vault\":\"Test\",\"tasks\":[],\(fields)}"
+            return try JSONDecoder().decode(Snapshot.self, from: Data(json.utf8))
+        }
+        let paused = try decode("\"pausedTaskIDs\":[\"\(id)\"]")
+        XCTAssertEqual(paused.pausedTaskIDs, [id])
+        XCTAssertNoThrow(try paused.validate())
+        XCTAssertThrowsError(try decode("\"pausedTaskIDs\":null").validate())
+        XCTAssertThrowsError(try decode("\"pausedTaskIDs\":[\"invalid\"]").validate())
+        XCTAssertThrowsError(try decode("\"pausedTaskIDs\":[\"\(id)\",\"\(id)\"]").validate())
+        var overlap = Snapshot(version: 2, generatedAt: timestamp, vault: "Test", tasks: [task()])
+        overlap.pausedTaskIDs = [id]
+        XCTAssertThrowsError(try overlap.validate())
+        var detailed = paused
+        detailed.pausedTasks = [PausedTask(id: id, path: "Tasks.md", title: "Call Alex")]
+        XCTAssertNoThrow(try detailed.validate())
+        detailed.pausedTasks = [PausedTask(id: "22222222-2222-4222-a222-222222222222", path: "Tasks.md", title: "Wrong task")]
+        XCTAssertThrowsError(try detailed.validate())
+    }
+    func testV3RequiresActionableReviewDetailsAndRejectsUnknownVersions() throws {
+        let formatter = ISO8601DateFormatter(); formatter.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
+        var snapshot = Snapshot(version: 3, generatedAt: formatter.string(from: Date()), vault: "Test", tasks: [task()], pausedTaskIDs: [])
+        XCTAssertThrowsError(try snapshot.validate())
+        snapshot.pausedTasks = []
+        XCTAssertNoThrow(try snapshot.validate())
+        let future = Snapshot(version: 4, generatedAt: snapshot.generatedAt, vault: "Test", tasks: [])
+        XCTAssertThrowsError(try future.validate())
+    }
     func testSnapshotFreshnessAndDuplicateValidation() throws {
         let now = Date()
         let formatter = ISO8601DateFormatter(); formatter.formatOptions = [.withInternetDateTime, .withFractionalSeconds]

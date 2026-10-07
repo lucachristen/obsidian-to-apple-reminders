@@ -1,0 +1,128 @@
+.reminders-bridge-summary,
+.reminders-bridge-link-card {
+  background: var(--background-secondary);
+  border: 1px solid var(--background-modifier-border);
+  border-radius: var(--radius-l);
+  padding: 16px;
+  margin: 0 0 16px;
+}
+.reminders-bridge-summary {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+.reminders-bridge-summary-text {
+  flex: 1;
+  min-width: 0;
+}
+.reminders-bridge-summary-title {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-weight: var(--font-semibold);
+}
+.reminders-bridge-summary-detail {
+  color: var(--text-muted);
+  font-size: var(--font-ui-small);
+  margin: 4px 0 0 16px;
+  overflow-wrap: anywhere;
+}
+.reminders-bridge-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  flex: none;
+  background: var(--text-faint);
+}
+.reminders-bridge-dot.mod-ok { background: var(--color-green); }
+.reminders-bridge-dot.mod-warning { background: var(--color-orange); }
+.reminders-bridge-status {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+.reminders-bridge-status-icon {
+  display: flex;
+}
+.reminders-bridge-status-icon svg {
+  width: var(--icon-xs);
+  height: var(--icon-xs);
+}
+.reminders-bridge-settings .reminders-bridge-query {
+  display: block;
+  box-sizing: border-box;
+  width: 100%;
+  min-height: 220px;
+  resize: vertical;
+  font-family: var(--font-monospace);
+  font-size: var(--font-ui-small);
+  line-height: 1.6;
+  padding: 12px;
+}
+.reminders-bridge-query-footer {
+  border-top: none;
+}
+.reminders-bridge-advanced {
+  margin: 20px 0;
+}
+.reminders-bridge-advanced summary {
+  cursor: pointer;
+  color: var(--text-muted);
+}
+.reminders-bridge-review-intro {
+  color: var(--text-muted);
+}
+.reminders-bridge-link-card {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 12px 20px;
+}
+.reminders-bridge-link-card .reminders-bridge-card-actions {
+  grid-column: 1 / -1;
+  border-top: 1px solid var(--background-modifier-border);
+  padding: 12px 0 0;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+.reminders-bridge-current-task {
+  border-left: 2px solid var(--interactive-accent);
+  padding-left: 12px;
+}
+.reminders-bridge-no-match {
+  color: var(--text-muted);
+  font-size: var(--font-ui-small);
+}
+.reminders-bridge-context-label {
+  color: var(--text-muted);
+  font-size: var(--font-ui-small);
+  margin-bottom: 8px;
+}
+.reminders-bridge-context-title {
+  font-weight: var(--font-semibold);
+  overflow-wrap: anywhere;
+}
+.reminders-bridge-context-location {
+  color: var(--text-muted);
+  font-size: var(--font-ui-small);
+  margin-top: 4px;
+  overflow-wrap: anywhere;
+}
+.reminders-bridge-context-lines {
+  color: var(--text-faint);
+  font-size: var(--font-ui-smaller);
+  margin-top: 8px;
+  overflow-wrap: anywhere;
+}
+.reminders-bridge-picker-original {
+  padding: 16px;
+  border-bottom: 1px solid var(--background-modifier-border);
+  background: var(--background-secondary);
+}
+.reminders-bridge-picker .suggestion-item {
+  padding: 12px 16px;
+}
+.reminders-bridge-match-reasons {
+  margin-top: 8px;
+  color: var(--text-accent);
+  font-size: var(--font-ui-smaller);
+}

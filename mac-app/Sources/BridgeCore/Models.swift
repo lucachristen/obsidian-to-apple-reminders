@@ -14,27 +14,61 @@ public struct BridgeTask: Codable, Equatable {
         self.selected = selected; self.due = due; self.scheduled = scheduled; self.priority = priority
     }
 }
+public struct PausedTask: Codable, Equatable {
+    public let id: String
+    public let path: String
+    public let title: String
+}
 public struct Snapshot: Codable {
     public let version: Int
     public let generatedAt: String
     public let vault: String
     public let tasks: [BridgeTask]
+    public var pausedTaskIDs: [String]? = nil
+    public var pausedTasks: [PausedTask]? = nil
+    public init(version: Int, generatedAt: String, vault: String, tasks: [BridgeTask], pausedTaskIDs: [String]? = nil, pausedTasks: [PausedTask]? = nil) {
+        self.version = version; self.generatedAt = generatedAt; self.vault = vault
+        self.tasks = tasks; self.pausedTaskIDs = pausedTaskIDs; self.pausedTasks = pausedTasks
+    }
     public func validate(now: Date = Date()) throws {
-        guard version == 1 else { throw BridgeError.invalid("Unsupported bridge protocol.") }
+        guard version == 1 || version == 2 || version == 3 else { throw BridgeError.invalid("Unsupported bridge protocol. Update both the plugin and Mac app.") }
+        if version >= 2 && pausedTaskIDs == nil { throw BridgeError.invalid("Missing paused identity list. Sync paused.") }
+        if version == 3 && pausedTasks == nil { throw BridgeError.invalid("Missing task review details. Update the Reminders Bridge plugin in Obsidian.") }
         let formatter = ISO8601DateFormatter()
         formatter.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
         guard let date = formatter.date(from: generatedAt), now.timeIntervalSince(date) < 90,
               now.timeIntervalSince(date) > -30 else {
-            throw BridgeError.invalid("Obsidian snapshot is stale. Keep Obsidian and its companion plugin running.")
+            throw BridgeError.obsidianUnavailable
         }
         guard Set(tasks.map(\.id)).count == tasks.count, tasks.allSatisfy({ UUID(uuidString: $0.id) != nil }) else {
             throw BridgeError.invalid("Invalid or duplicate task IDs. Sync paused.")
         }
+        let paused = pausedTaskIDs ?? []
+        guard Set(paused).count == paused.count, paused.allSatisfy({ UUID(uuidString: $0) != nil }),
+              Set(paused).isDisjoint(with: Set(tasks.map(\.id))) else {
+            throw BridgeError.invalid("Invalid paused task IDs. Sync paused.")
+        }
+        if let details = pausedTasks {
+            guard details.count == paused.count, Set(details.map(\.id)) == Set(paused) else {
+                throw BridgeError.invalid("Invalid task review details. Sync paused.")
+            }
+        }
     }
 }
 public enum BridgeError: LocalizedError {
+    /// A real problem the user has to look at.
     case invalid(String)
-    public var errorDescription: String? { switch self { case .invalid(let message): return message } }
+    /// Obsidian isn't running or hasn't written a fresh snapshot. Not a fault.
+    case obsidianUnavailable
+    /// Something moved underneath us mid-sync; the next pass will succeed.
+    case retry
+    public var errorDescription: String? {
+        switch self {
+        case .invalid(let message): return message
+        case .obsidianUnavailable: return "Open your vault in Obsidian to sync."
+        case .retry: return "Sync will retry shortly."
+        }
+    }
 }
 public struct CompletionCommand: Codable {
     public let version: Int
@@ -60,7 +94,8 @@ public enum SyncDecision: Equatable {
 }
 
 /// Three-way completion reconciliation. Metadata always belongs to Obsidian.
-public func decide(task: BridgeTask?, mapping: Mapping?, reminderCompleted: Bool?) -> SyncDecision {
+public func decide(task: BridgeTask?, mapping: Mapping?, reminderCompleted: Bool?, identityPaused: Bool = false) -> SyncDecision {
+    if identityPaused { return .wait }
     if mapping?.pending != nil { return .wait }
     guard let task else { return mapping == nil ? .ignore : .remove }
     guard let mapping else { return task.selected ? .create : .ignore }

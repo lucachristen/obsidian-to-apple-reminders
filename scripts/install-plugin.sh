@@ -14,5 +14,5 @@ fi
 npm --prefix "$ROOT/obsidian-plugin" run build
 DEST="$VAULT/$CONFIG/plugins/obsidian-reminders-companion"
 mkdir -p "$DEST"
-cp "$ROOT/obsidian-plugin/main.js" "$ROOT/obsidian-plugin/manifest.json" "$DEST/"
-printf '\nInstalled in %s\nEnable Apple Reminders Bridge in Obsidian community plugins.\n' "$DEST"
+cp "$ROOT/obsidian-plugin/main.js" "$ROOT/obsidian-plugin/manifest.json" "$ROOT/obsidian-plugin/styles.css" "$DEST/"
+printf '\nInstalled in %s\nEnable Reminders Bridge in Obsidian community plugins.\n' "$DEST"
