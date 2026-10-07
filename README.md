@@ -144,3 +144,7 @@ To sign a build with your development identity:
 ```bash
 SIGNING_IDENTITY="Apple Development: Your Name (TEAMID)" ./scripts/build-app.sh
 ```
+
+## License
+
+[MIT](LICENSE) © 2026 Luca Christen.
