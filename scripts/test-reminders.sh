@@ -5,8 +5,8 @@ BUILD="$ROOT/dist/integration-native"
 APP="$ROOT/dist/Reminders Bridge Integration Test.app"
 mkdir -p "$BUILD" "$APP/Contents/MacOS"
 TARGET="$(uname -m)-apple-macos14.0"
-swiftc -target "$TARGET" -parse-as-library -emit-module -emit-object \
-  -module-name BridgeCore "$ROOT/mac-app/Sources/BridgeCore/Models.swift" \
+swiftc -target "$TARGET" -parse-as-library -whole-module-optimization -emit-module -emit-object \
+  -module-name BridgeCore "$ROOT/mac-app/Sources/BridgeCore/"*.swift \
   -o "$BUILD/BridgeCore.o" -emit-module-path "$BUILD/BridgeCore.swiftmodule"
 swiftc -target "$TARGET" -parse-as-library -I "$BUILD" "$BUILD/BridgeCore.o" \
   "$ROOT/mac-app/Sources/RemindersBridge/SyncController.swift" \

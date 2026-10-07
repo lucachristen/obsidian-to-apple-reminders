@@ -13,10 +13,13 @@ PROFILE="$ROOT/dist/integration-profile"
 mkdir -p "$VAULT/.obsidian/plugins/obsidian-tasks-plugin" "$PROFILE"
 # Only these named, disposable directories are used. No existing vault/profile is read.
 node --input-type=module - "$ROOT" <<'JS'
-import { writeFileSync } from 'node:fs';
+import { rmSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 const root = process.argv[2];
 const vault = join(root, 'dist/integration-vault');
+// Previous disposable sidecar identities must not attach to freshly reset fixtures.
+rmSync(join(vault, '.obsidian/plugins/obsidian-reminders-companion/bridge'), { recursive: true, force: true });
+for (const name of ['IdentityExperiment.md', 'RelinkTarget.md', 'DeleteRecurring.md']) rmSync(join(vault, name), { force: true });
 const write = (path, value) => writeFileSync(path, JSON.stringify(value, null, 2));
 write(join(root, 'dist/integration-profile/obsidian.json'), { vaults: { '0123456789abcdef': { path: vault, ts: Date.now(), open: true } } });
 write(join(vault, '.obsidian/app.json'), { safeMode: false });
@@ -27,7 +30,7 @@ JS
 node --input-type=module - "$VAULT" <<'JS'
 import { writeFileSync } from 'node:fs';
 import { join } from 'node:path';
-writeFileSync(join(process.argv[2], '.obsidian/plugins/obsidian-reminders-companion/data.json'), JSON.stringify({ enabled: true, queryPath: 'Project.md' }));
+writeFileSync(join(process.argv[2], '.obsidian/plugins/obsidian-reminders-companion/data.json'), JSON.stringify({ enabled: false, queryPath: 'Project.md' }));
 JS
 for file in main.js manifest.json styles.css; do
   curl --fail -Ls "https://github.com/obsidian-tasks-group/obsidian-tasks/releases/download/8.4.0/$file" \
