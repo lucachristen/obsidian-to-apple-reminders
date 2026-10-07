@@ -2,9 +2,11 @@
 
 **Reminders Bridge** is a native macOS menu-bar app plus a matching Obsidian plugin of the same name. Your **Tasks query** selects what goes into a dedicated Apple Reminders list. Completion and reopening sync both ways; Obsidian owns titles, due dates and priorities.
 
-No cloud service, network listener, API key or Obsidian vault scanning by the Mac app. The two processes exchange local JSON files inside the Reminders Bridge plugin folder.
+The bridge has no cloud backend, network listener or API key, and the Mac app does not scan your vault's notes. The two processes exchange local JSON files inside the Reminders Bridge plugin folder. Apple Reminders may sync task content through iCloud or another configured account; your vault's own sync service may also upload plugin data unless you exclude it.
 
-**Status:** locally validated end-to-end with **macOS 27.0, Obsidian 1.13.7, Tasks 8.4.0 and real Apple Reminders/EventKit**, using an isolated vault/profile and the production sync controller in a disposable test app. Automated unit and integration tests pass. Menu-bar interactions and launch-at-login still need manual verification. Start with a test vault and back up your notes. The Tasks query adapter uses private internals.
+**Development:** this project was vibe-coded with OpenAI's `gpt-6.1-sol` model. Tests are included, but they are not a guarantee of correctness; review the code and use a test vault before trusting it with important tasks.
+
+**Status:** experimental, source-build software. Start with a test vault and back up your notes and task identity registry. Unit tests, TypeScript checking and the plugin/macOS builds pass. An isolated integration harness is included for real Obsidian and Apple Reminders testing; it does not verify menu-bar interactions or launch-at-login. The Tasks query adapter uses private internals, so compatibility is version-sensitive.
 
 ## Requirements
 
@@ -18,7 +20,7 @@ The query adapter was checked against **Tasks 8.4.0 source**, revision [`a722a85
 
 ## Install
 
-Run these commands from this repository:
+Clone this repository and run these commands from its root. This installation builds from source; the Mac app is not notarized.
 
 ```bash
 npm ci
@@ -29,13 +31,13 @@ npm ci
 ### 1. Set up Obsidian
 
 1. Open **Settings → Community plugins** and enable **Reminders Bridge**. Restart Obsidian if the newly copied plugin is not listed. Tasks must also be enabled.
-2. In Tasks settings, open **Searches → Enable custom searches**, since your query uses `filter by function`.
+2. If you use a query with `filter by function`, enable **Tasks → Searches → Enable custom searches**. The default query does not require this.
 3. Open **Reminders Bridge** settings. Under **Tasks to sync**, start from the default query (below) or write your own, then click **Save**. Under **Advanced**, **Run query as if in note** is only needed if your query refers to its own note (`query.file` properties or placeholders such as `{{query.file.folder}}`): enter a vault-relative note path, and those references resolve against that note. The query itself still lives in plugin settings.
 4. Turn on **Sync automatically**. Check Obsidian's status bar for query errors.
 
 Sync does **not** add IDs or other metadata to your Markdown. Task identities live in `bridge/identities.json` inside the plugin folder, with an automatically maintained `identities.json.bak` copy. Back up these files alongside your notes; they contain task text, paths and matching context.
 
-The plugin matches tasks using their text, note, neighboring lines and note revision. Unique unchanged tasks can be tracked across moves and renames; completion changes and same-position edits with unchanged neighboring context can usually retain their link. Line numbers alone and fuzzy title matches are never used. Identical tasks are distinguishable in an unchanged note but can become uncertain after edits. Without an attached ID, a deleted task replaced by an identical task cannot always be distinguished from the original.
+The plugin matches tasks using their text, note, neighboring lines and note revision. Unique unchanged tasks can be tracked across moves and renames; completion changes and same-position edits with unchanged neighboring context can usually retain their link. Line numbers alone and fuzzy title matches are never used for automatic linking; fuzzy matches are only suggestions for you to confirm. Identical tasks are distinguishable in an unchanged note but can become uncertain after edits. Without an attached ID, a deleted task replaced by an identical task cannot always be distinguished from the original.
 
 Uncertain links are frozen, not treated as deletions. The Mac app offers **Review 1 Task in Obsidian…** (or the corresponding task count), opening the detailed review dialog in Obsidian. You can also click the plugin status bar, use **Review task links** in the command palette, or click **Review…** under **Task links** in plugin settings. Each task in the review dialog shows where it was (note, line and neighboring lines) next to where it probably is now, with the reasons for the suggestion (same title, same note, shared context). Click a location to open that note. Then choose one: **Link to this task** keeps its reminder and links it to the suggested task; **Choose another…** opens a picker that ranks likely matches first and searches task text, note paths and neighboring lines (case/accent insensitive); **Task was deleted**, confirmed with **Delete its reminder**, removes the reminder. Nothing is relinked until you click. Other confidently linked tasks keep syncing; unmatched new tasks wait until uncertain links are resolved so a moved task cannot create a duplicate reminder. Pending completion requests wait too, and apply after relinking.
 
@@ -119,12 +121,12 @@ Tasks descriptions stay clean: there are no injected identity comments for descr
 | An unfinished task leaves the query for another reason | Remove its managed reminder, never the Markdown task |
 | Delete a task from Obsidian | Freeze its link; choose **Task was deleted** to remove its reminder |
 | Delete a selected reminder | Recreate it; reminder deletion does **not** delete a task |
-| Create an unrelated reminder | Leave it untouched; no inbox import in v1 |
+| Create an unrelated reminder | Leave it untouched; reminders are not imported into Obsidian |
 | Edit a managed reminder's title/date/notes | Obsidian overwrites those fields |
 
 - **Due dates** become all-day Reminders due dates. **Scheduled dates** stay separate in reminder notes; they do not become deadlines or alarms. Start dates are not synced.
 - Tasks priorities highest/high → Reminders high; medium → medium; normal → none; low/lowest → low.
-- V1 supports standard `[ ]` and `[x]`/`[X]` statuses. Custom status cycles are rejected rather than incorrectly interpreted.
+- Standard `[ ]` and `[x]`/`[X]` statuses are supported. Custom status cycles are rejected rather than incorrectly interpreted.
 - Completion uses Tasks' public toggle interface, so Tasks' completion-date and recurrence behavior apply. For recurrence, the registry records the resulting completed instance; the generated next instance gets a new identity if it matches the query. Reopening an old recurring instance does not remove its already-generated successor. With `🏁 delete`, Tasks removes the completed instance instead: its link/reminder is retired, and the successor gets a new identity. Interrupted bridge completion edits are journaled and replayed without toggling the successor again.
 - A three-way comparison distinguishes an Obsidian change from a Reminders change. If both changed, Obsidian is authoritative. In-flight completion commands prevent stale snapshots from overwriting the user's reminder checkmark.
 - Reminder titles use wiki-link display text/aliases rather than `[[brackets]]`. Notes contain only scheduling information when needed—no UUID or vault path. The Obsidian URL carries a `bridgeTask` identity parameter for crash recovery; clicking it still opens the source note.
@@ -137,13 +139,13 @@ Tasks descriptions stay clean: there are no injected identity comments for descr
 
 Use a test vault first:
 
-1. Create a note with YAML `type: project` and an unfinished task due tomorrow (plus your global Tasks tag, if configured).
+1. Create a note with an unfinished task due tomorrow (plus your global Tasks tag, if configured).
 2. Confirm the query finds it in an ordinary Tasks block, then confirm exactly one reminder is created.
 3. Complete it in Reminders. Confirm Obsidian's checkbox and completion date update, even though the task leaves the query.
 4. Reopen that reminder. Confirm the task reopens without producing a duplicate.
 5. Complete and reopen from Obsidian; edit its title/due date with surrounding lines unchanged; move the unchanged task to another note. Confirm its identity is preserved and no ID comments are added.
 6. Test a recurring task: the completed instance should remain linked, and only a matching successor should create a new reminder.
-7. Change the note's `type` to an excluded value while the task is unfinished. Confirm its reminder disappears but the task remains.
+7. Change the unfinished task's due date to a month from now and remove any scheduled date, so it leaves the default query. Confirm its reminder disappears but the Markdown task remains.
 8. Add a normal reminder yourself. It should never be imported or changed.
 9. Enter an invalid query. Existing reminders should remain untouched and both apps should show a sync error.
 10. Move and substantially rewrite a task so matching becomes uncertain. Confirm its reminder is frozen, other linked tasks keep syncing, and **Review…** under **Task links** lets you explicitly relink it.
@@ -202,7 +204,7 @@ scripts/                               Build and plugin installation
 ### Local data and protocol
 
 - Vault mailbox: `<config>/plugins/obsidian-reminders-companion/bridge/`.
-- `identities.json` and `identities.json.bak`: versioned task identity registry and redundant latest copy, containing UUIDs, task text, note paths, neighboring-line context and note hashes. Both are written before migration, completion edits or snapshot publication; unchanged registries are not repeatedly rewritten. The backup protects against a missing/corrupt primary, not accidental deletion of both copies—keep independent vault backups.
+- `identities.json` and `identities.json.bak`: versioned task identity registry and redundant latest copy, containing UUIDs, task text, note paths, neighboring-line context and note hashes. A pending delete-on-completion edit also journals the full affected note's before/after text until it is acknowledged. Treat both files as private vault data. Both are written before migration, completion edits or snapshot publication; unchanged registries are not repeatedly rewritten. The backup protects against a missing/corrupt primary, not accidental deletion of both copies—keep independent vault backups.
 - `snapshot.json`: protocol v3 complete snapshot, timestamp, vault name, query-ordered selected tasks plus all confidently linked Tasks-cache tasks (including completed tasks), `pausedTaskIDs`, and human-readable `pausedTasks` review details. Paused IDs must be unique and disjoint from exported tasks; review details must correspond to those IDs. The Mac app still accepts v1/v2 during upgrades; older apps safely reject v3.
 - `error.json`: companion error; the Mac app refuses to sync while it exists.
 - `commands/<uuid>.json`: durable, idempotent completion requests with expected prior completion.
@@ -210,37 +212,8 @@ scripts/                               Build and plugin installation
 - App state: `~/Library/Application Support/ObsidianRemindersBridge/<vault-path-and-config-hash>.json`. Contains the dedicated list identity and configurable name, task/reminder mappings, last synchronized completion and pending commands.
 - Preferences/security-scoped vault bookmark: macOS defaults under `ch.lucachristen.obsidian-reminders-bridge`.
 
-The app is not sandboxed; its source build uses a user-selected folder and security-scoped bookmark rather than an App Store entitlement setup. It only accesses the selected mailbox and its own application-support state. EventKit grants full Reminders access, but writes are restricted to managed items in the dedicated list.
+The app is not sandboxed; its source build uses a user-selected folder and security-scoped bookmark rather than an App Store entitlement setup. It reads the selected vault's configuration directories to locate the plugin mailbox, and stores its own application-support state. It does not read your Markdown notes. EventKit grants full Reminders access, but writes are restricted to managed items in the dedicated list.
 
 ### Remove
 
 Pause and quit the Mac app, disable the companion, delete the application/plugin folder, and optionally delete the dedicated Reminders list and application-support state. No metadata cleanup is needed in Markdown after migration. Preserve the identity registry if you may reinstall and want to retain existing reminder links.
-
-## Task reconciliation backlog
-
-Implemented (2026-10-05): contextual original/current comparison, ranked candidate suggestions with match reasons, and multi-field search. Unit and real Obsidian interaction tests cover these changes; user visual review and additional real-world matching examples are still needed.
-
-User feedback (2026-10-04): task merging/reconciliation in Obsidian needs improvement. In particular, it is hard to find the correct task in the relinking picker.
-
-- Show the original task alongside possible matches, with useful note and task context.
-- Rank likely matches first and improve search so users do not have to sift through unrelated tasks.
-- Keep the final choice explicit; preserve the no-guessing safety rule for ambiguous identities.
-- Capture concrete examples before changing matching or completion write-back behavior.
-
-## UI refinement backlog
-
-Implemented (2026-10-05): quick background checks no longer publish transient activity; manual sync gives immediate feedback, and slower checks delay activity by 400 ms and keep it visible for at least 500 ms. The redundant one-second timeline and menu polling caption are removed, and unchanged summary/review values are not republished. Native integration tests cover quiet no-op refresh and manual feedback. Visual stability, focus/scroll preservation and the broader native design still need user verification.
-
-UI iteration (2026-10-05): after user screenshot review, replaced the oversized Settings tabs and fixed-height form with an intrinsically sized single page, readable connection rows, a native rename dialog and collapsed Advanced controls. The menu now uses a compact, richer panel with a genuine Liquid Glass surface on macOS 26+, native secondary controls and a more-actions menu. Settings uses native glass buttons while keeping content surfaces readable; no custom blur shaders, gradients or glass-on-glass cards. Last-sync time is shown only while paused. This is a design candidate for user visual review, not a claim that polish is finished.
-
-User feedback (2026-10-04, reiterated 2026-10-05): the UI is too complex and does not yet feel like a polished native macOS app. The UI redesign is not considered finished.
-
-- Investigate reported UI flashing on every update/refresh. Updates should be visually stable, preserving focus, scroll position and view state; verify the cause before changing rendering behavior.
-- Reduce visual clutter and repeated status/help text in the menu-bar popover and settings.
-- Refine spacing, typography, control hierarchy and native macOS conventions—not just grouped panels.
-- Keep the primary sync state and review action obvious; move secondary details out of the main flow.
-- Review the next iteration visually with the user before calling it polished.
-
-## V2
-
-Import newly created reminders into an Obsidian inbox note, broader status/date support, and a supported upstream Tasks query interface would be natural extensions.
